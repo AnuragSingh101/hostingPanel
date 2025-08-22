@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Sidebar from './Sidebar';
 import Terminal from './Terminal';
 import FileManager from './FileManager';
-import AppManager from './AppManager';
+import ProcessManager from './ProcessManager'; // updated import
 import { useSshSession } from '../hooks/useSshSession';
 
 export default function Dashboard({ onDisconnect }) {
@@ -20,8 +20,8 @@ export default function Dashboard({ onDisconnect }) {
         return <Terminal />;
       case 'filemanager':
         return <FileManager />;
-      case 'appmanager':
-        return <AppManager />;
+      case 'processmanager':     // updated case
+        return <ProcessManager />;  // updated component
       default:
         return <Terminal />;
     }
@@ -82,9 +82,7 @@ export default function Dashboard({ onDisconnect }) {
         </header>
 
         {/* Content Area */}
-        <main className="flex-1 overflow-hidden">
-          {renderActiveFeature()}
-        </main>
+        <main className="flex-1 overflow-hidden">{renderActiveFeature()}</main>
       </div>
     </div>
   );
