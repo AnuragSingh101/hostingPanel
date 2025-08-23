@@ -16,6 +16,7 @@ export default function ProcessManager() {
         loadServices();
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionReady, activeTab]);
 
   const loadProcesses = () => {
@@ -30,13 +31,13 @@ export default function ProcessManager() {
             if (parts.length >= 11) {
               return {
                 user: parts[0],
-                pid: parts[7],
-                cpu: parts[1],
-                mem: parts[2],
-                vsz: parts[3],
-                rss: parts[4],
-                tty: parts[5],
-                stat: parts[6],
+                pid: parts[1],        // corrected pid index
+                cpu: parts[2],        // corrected cpu index
+                mem: parts[3],        // corrected mem index
+                vsz: parts[4],
+                rss: parts[5],
+                tty: parts[6],
+                stat: parts[7],
                 start: parts[8],
                 time: parts[9],
                 command: parts.slice(10).join(' '),
@@ -45,7 +46,6 @@ export default function ProcessManager() {
             return null;
           })
           .filter(Boolean);
-        
         setProcesses(parsedProcesses);
       } catch (error) {
         console.error('Error parsing processes:', error);
@@ -58,24 +58,24 @@ export default function ProcessManager() {
     setLoading(true);
     executeCommand('systemctl list-units --type=service --state=running --no-pager', (result) => {
       try {
-        const lines = result.output.split('\n').slice(1);
+        const lines = result.output.split('\n').filter(line => line.trim());
         const parsedServices = lines
           .filter(line => line.includes('.service'))
           .map(line => {
             const parts = line.trim().split(/\s+/);
-            if (parts.length >= 4) {
+            // Description might contain spaces, join all parts after index 4
+            if (parts.length >= 5) {
               return {
                 unit: parts[0],
-                load: parts[7],
-                active: parts[1],
-                sub: parts[2],
+                load: parts[1],        // corrected load index
+                active: parts[2],      // corrected active index
+                sub: parts[3],         // corrected sub index
                 description: parts.slice(4).join(' '),
               };
             }
             return null;
           })
           .filter(Boolean);
-        
         setServices(parsedServices);
       } catch (error) {
         console.error('Error parsing services:', error);

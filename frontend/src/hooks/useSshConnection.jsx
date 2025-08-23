@@ -10,13 +10,16 @@ export default function useSshConnection(initialPort = 22) {
   });
   const [usePrivateKey, setUsePrivateKey] = useState(false);
 
+  // Handle input field changes
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Toggle between password and private key authentication
   const toggleAuth = () => setUsePrivateKey((v) => !v);
 
+  // Validate form data before submitting connection request
   const validate = () => {
     if (!formData.host || !formData.username) {
       alert('Host and Username are required');
@@ -33,6 +36,7 @@ export default function useSshConnection(initialPort = 22) {
     return true;
   };
 
+  // Prepare credentials object matching backend SSHManager expectations
   const getCredentials = () => ({
     host: formData.host,
     port: Number(formData.port) || initialPort,

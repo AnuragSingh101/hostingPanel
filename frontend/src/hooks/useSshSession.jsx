@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useRef, useState, useEffect } from 'react';
-import io from 'socket.io-client';
+import { io } from 'socket.io-client';
 
 const SshSessionContext = createContext();
 
@@ -28,6 +28,9 @@ export const SshSessionProvider = ({ credentials, children }) => {
         socket.current.disconnect();
         socket.current = null;
       }
+      setConnected(false);
+      setConnecting(false);
+      setSessionReady(false);
     };
   }, [credentials]);
 
@@ -37,6 +40,7 @@ export const SshSessionProvider = ({ credentials, children }) => {
 
     socket.current = io('http://localhost:3001', {
       transports: ['websocket', 'polling'],
+      withCredentials: true,
     });
 
     socket.current.on('connect', () => {
@@ -95,6 +99,9 @@ export const SshSessionProvider = ({ credentials, children }) => {
     if (socket.current && sessionReady) {
       socket.current.emit('execute-command', command);
       socket.current.once('command-result', callback);
+    } else {
+      // Optionally handle commands when session not ready
+      console.warn('SSH session not ready. Cannot execute command:', command);
     }
   };
 
@@ -103,6 +110,7 @@ export const SshSessionProvider = ({ credentials, children }) => {
       socket.current.on('ssh-data', onData);
       return () => socket.current.off('ssh-data', onData);
     }
+    return () => {};
   };
 
   const sendTerminalInput = (data) => {
@@ -131,9 +139,5 @@ export const SshSessionProvider = ({ credentials, children }) => {
     resizeTerminal,
   };
 
-  return (
-    <SshSessionContext.Provider value={value}>
-      {children}
-    </SshSessionContext.Provider>
-  );
+  return <SshSessionContext.Provider value={value}>{children}</SshSessionContext.Provider>;
 };

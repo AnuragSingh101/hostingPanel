@@ -1,9 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Terminal } from '@xterm/xterm';
-import { FitAddon } from '@xterm/addon-fit';
-import { WebLinksAddon } from '@xterm/addon-web-links';
+import React, { useEffect, useRef } from 'react';
+import { Terminal } from 'xterm';
+import { FitAddon } from 'xterm-addon-fit';
+import { WebLinksAddon } from 'xterm-addon-web-links';
 import { useSshSession } from '../hooks/useSshSession';
-import '@xterm/xterm/css/xterm.css';
+import 'xterm/css/xterm.css';
 
 export default function TerminalComponent() {
   const terminalRef = useRef(null);
@@ -14,7 +14,13 @@ export default function TerminalComponent() {
   useEffect(() => {
     if (!terminalRef.current) return;
 
-    // Initialize terminal
+    // Dispose old terminal and fitAddon before creating new ones
+    if (terminal.current) {
+      terminal.current.dispose();
+      terminal.current = null;
+      fitAddon.current = null;
+    }
+
     terminal.current = new Terminal({
       cursorBlink: true,
       fontSize: 14,
@@ -45,53 +51,64 @@ export default function TerminalComponent() {
       },
     });
 
-    // Initialize addons
     fitAddon.current = new FitAddon();
     const webLinksAddon = new WebLinksAddon();
 
     terminal.current.loadAddon(fitAddon.current);
     terminal.current.loadAddon(webLinksAddon);
 
-    // Open terminal
     terminal.current.open(terminalRef.current);
-    fitAddon.current.fit();
 
-    // Handle terminal input
-    const handleTerminalInput = (data) => {
+    // Delay initial fit to avoid dimensions error (updated lines 42-48)
+    requestAnimationFrame(() => {
+      try {
+        fitAddon.current.fit();
+      } catch {
+        // Ignore errors if terminal is unmounted before fit completes
+      }
+    });
+
+    terminal.current.onData((data) => {
       if (sessionReady) {
         sendTerminalInput(data);
       }
-    };
-    terminal.current.onData(handleTerminalInput);
+    });
 
-    // Subscribe to terminal data from SSH session
     const unsubscribe = subscribeToTerminal((data) => {
       if (terminal.current) {
         terminal.current.write(data);
       }
     });
 
-    // Handle resize
     const handleResize = () => {
       if (fitAddon.current && terminal.current && sessionReady) {
-        fitAddon.current.fit();
-        resizeTerminal(terminal.current.cols, terminal.current.rows);
+        try {
+          fitAddon.current.fit();
+          resizeTerminal(terminal.current.cols, terminal.current.rows);
+        } catch {
+          // Ignore errors during resize after unmount
+        }
       }
     };
-
     window.addEventListener('resize', handleResize);
 
-    // Initial resize
     if (sessionReady) {
-      resizeTerminal(terminal.current.cols, terminal.current.rows);
+      try {
+        fitAddon.current.fit();
+        resizeTerminal(terminal.current.cols, terminal.current.rows);
+      } catch {
+        // Ignore errors on initial resize
+      }
     }
 
+    // Cleanup on unmount (line 74 onward)
     return () => {
       window.removeEventListener('resize', handleResize);
       if (unsubscribe) unsubscribe();
       if (terminal.current) {
         terminal.current.dispose();
         terminal.current = null;
+        fitAddon.current = null;
       }
     };
   }, [sessionReady, subscribeToTerminal, sendTerminalInput, resizeTerminal]);

@@ -20,8 +20,8 @@ export default function Dashboard({ onDisconnect }) {
         return <Terminal />;
       case 'filemanager':
         return <FileManager />;
-      case 'processmanager':     // updated case
-        return <ProcessManager />;  // updated component
+      case 'processmanager':     // updated case for renamed feature
+        return <ProcessManager />;  // updated imported component
       default:
         return <Terminal />;
     }

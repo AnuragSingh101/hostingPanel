@@ -70,6 +70,7 @@ class SSHManager extends EventEmitter {
 
   stopKeepAlive() {
     clearInterval(this.keepAliveInterval);
+    this.keepAliveInterval = null;
   }
 
   disconnect() {

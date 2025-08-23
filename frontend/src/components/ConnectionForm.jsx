@@ -14,6 +14,7 @@ export default function ConnectionForm({ onConnect }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!validate()) return;
+    // Pass credentials object that matches backend API expectation
     onConnect(getCredentials());
   };
 

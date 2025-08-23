@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Terminal } from '@xterm/xterm';
-import { FitAddon } from '@xterm/addon-fit';
-import { WebLinksAddon } from '@xterm/addon-web-links';
-import io from 'socket.io-client';
-import '@xterm/xterm/css/xterm.css';
+import { Terminal } from 'xterm';
+import { FitAddon } from 'xterm-addon-fit';
+import { WebLinksAddon } from 'xterm-addon-web-links';
+import { io } from 'socket.io-client';
+import 'xterm/css/xterm.css';
 import './Terminal.css';
 
 const TerminalComponent = ({ sshCredentials, onDisconnect }) => {
@@ -18,56 +18,55 @@ const TerminalComponent = ({ sshCredentials, onDisconnect }) => {
   useEffect(() => {
     if (!terminalRef.current) return;
 
-    // Initialize terminal
-    terminal.current = new Terminal({
-      cursorBlink: true,
-      fontSize: 14,
-      fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-      theme: {
-        background: '#1e1e1e',
-        foreground: '#ffffff',
-        cursor: '#ffffff',
-        selection: '#ffffff40',
-        black: '#000000',
-        red: '#cd3131',
-        green: '#0dbc79',
-        yellow: '#e5e510',
-        blue: '#2472c8',
-        magenta: '#bc3fbc',
-        cyan: '#11a8cd',
-        white: '#e5e5e5',
-        brightBlack: '#666666',
-        brightRed: '#f14c4c',
-        brightGreen: '#23d18b',
-        brightYellow: '#f5f543',
-        brightBlue: '#3b8eea',
-        brightMagenta: '#d670d6',
-        brightCyan: '#29b8db',
-        brightWhite: '#e5e5e5'
-      },
-      scrollback: 10000,
-      tabStopWidth: 4
-    });
+    if (!terminal.current) {
+      // Initialize terminal
+      terminal.current = new Terminal({
+        cursorBlink: true,
+        fontSize: 14,
+        fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+        theme: {
+          background: '#1e1e1e',
+          foreground: '#ffffff',
+          cursor: '#ffffff',
+          selection: '#ffffff40',
+          black: '#000000',
+          red: '#cd3131',
+          green: '#0dbc79',
+          yellow: '#e5e510',
+          blue: '#2472c8',
+          magenta: '#bc3fbc',
+          cyan: '#11a8cd',
+          white: '#e5e5e5',
+          brightBlack: '#666666',
+          brightRed: '#f14c4c',
+          brightGreen: '#23d18b',
+          brightYellow: '#f5f543',
+          brightBlue: '#3b8eea',
+          brightMagenta: '#d670d6',
+          brightCyan: '#29b8db',
+          brightWhite: '#e5e5e5'
+        },
+        scrollback: 10000,
+        tabStopWidth: 4
+      });
 
-    // Initialize addons
-    fitAddon.current = new FitAddon();
-    const webLinksAddon = new WebLinksAddon();
-    
-    terminal.current.loadAddon(fitAddon.current);
-    terminal.current.loadAddon(webLinksAddon);
+      fitAddon.current = new FitAddon();
+      const webLinksAddon = new WebLinksAddon();
 
-    // Open terminal
-    terminal.current.open(terminalRef.current);
-    fitAddon.current.fit();
+      terminal.current.loadAddon(fitAddon.current);
+      terminal.current.loadAddon(webLinksAddon);
 
-    // Handle window resize
+      terminal.current.open(terminalRef.current);
+      fitAddon.current.fit();
+    }
+
     const handleResize = () => {
       if (fitAddon.current && terminal.current) {
         fitAddon.current.fit();
         if (socket.current && connected) {
           socket.current.emit('terminal-resize', {
             cols: terminal.current.cols,
-            rows: terminal.current.rows
+            rows: terminal.current.rows,
           });
         }
       }
@@ -75,39 +74,35 @@ const TerminalComponent = ({ sshCredentials, onDisconnect }) => {
 
     window.addEventListener('resize', handleResize);
 
-    // Connect to SSH when component mounts
     if (sshCredentials) {
       connectToSSH();
     }
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      
       if (socket.current) {
         socket.current.disconnect();
       }
-      
       if (terminal.current) {
         terminal.current.dispose();
+        terminal.current = null;
       }
     };
+    // sshCredentials change triggers reconnection
   }, [sshCredentials]);
 
   const connectToSSH = () => {
     setConnecting(true);
     setError('');
 
-    // Initialize socket connection
     socket.current = io('http://localhost:3001', {
-      transports: ['websocket', 'polling']
+      transports: ['websocket', 'polling'],
+      withCredentials: true,
     });
 
-    // Socket event handlers
     socket.current.on('connect', () => {
       console.log('Socket connected');
       terminal.current.writeln('\r\n\x1b[32mConnecting to SSH server...\x1b[0m\r\n');
-      
-      // Request SSH connection
       socket.current.emit('ssh-connect', sshCredentials);
     });
 
@@ -116,18 +111,16 @@ const TerminalComponent = ({ sshCredentials, onDisconnect }) => {
       setConnected(true);
       setConnecting(false);
       terminal.current.writeln('\r\n\x1b[32mSSH connection established!\x1b[0m\r\n');
-      
-      // Set up terminal input handling
+
       terminal.current.onData((data) => {
         if (socket.current && connected) {
           socket.current.emit('terminal-input', data);
         }
       });
 
-      // Send initial terminal size
       socket.current.emit('terminal-resize', {
         cols: terminal.current.cols,
-        rows: terminal.current.rows
+        rows: terminal.current.rows,
       });
     });
 
@@ -190,9 +183,17 @@ const TerminalComponent = ({ sshCredentials, onDisconnect }) => {
     <div className="terminal-container">
       <div className="terminal-header">
         <div className="terminal-info">
-          <span className={`status-indicator ${connected ? 'connected' : connecting ? 'connecting' : 'disconnected'}`}></span>
+          <span
+            className={`status-indicator ${
+              connected ? 'connected' : connecting ? 'connecting' : 'disconnected'
+            }`}
+          ></span>
           <span className="connection-info">
-            {connecting ? 'Connecting...' : connected ? `Connected to ${sshCredentials.host}` : 'Disconnected'}
+            {connecting
+              ? 'Connecting...'
+              : connected
+              ? `Connected to ${sshCredentials.host}`
+              : 'Disconnected'}
           </span>
         </div>
         <div className="terminal-controls">
@@ -206,13 +207,9 @@ const TerminalComponent = ({ sshCredentials, onDisconnect }) => {
           </button>
         </div>
       </div>
-      
-      {error && (
-        <div className="error-message">
-          Error: {error}
-        </div>
-      )}
-      
+
+      {error && <div className="error-message">Error: {error}</div>}
+
       <div ref={terminalRef} className="terminal-content" />
     </div>
   );
